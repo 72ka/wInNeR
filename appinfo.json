@@ -1,0 +1,11 @@
+{
+  "id": "cz.72ka.winner",
+  "version": "0.0.3",
+  "vendor": "72ka",
+  "type": "web",
+  "main": "index.html",
+  "title": "wInNeR",
+  "icon": "icon.png",
+  "splashicon": "icon-256x256.png",
+  "uiRevision": "2"
+}
