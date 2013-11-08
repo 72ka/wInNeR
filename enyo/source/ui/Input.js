@@ -54,6 +54,9 @@ enyo.kind({
 		if (enyo.platform.ie) {
 			this.handlers.onkeyup = "iekeyup";
 		}
+		if (enyo.platform.windowsPhone) {
+			this.handlers.onkeydown = "iekeydown";
+		}
 		this.inherited(arguments);
 		this.placeholderChanged();
 		// prevent overriding a custom attribute with null
@@ -66,6 +69,11 @@ enyo.kind({
 		this.inherited(arguments);
 
 		enyo.makeBubble(this, "focus", "blur");
+
+		//Force onchange event to be bubbled inside Enyo for IE8
+		if(enyo.platform.ie == 8){
+      		this.setAttribute("onchange", enyo.bubbler);
+      	}
 
 		this.disabledChanged();
 		if (this.defaultFocus) {
@@ -96,6 +104,13 @@ enyo.kind({
 			this.bubble("oninput", inEvent);
 		}
 	},
+	iekeydown: function(inSender, inEvent) {
+		var wp = enyo.platform.windowsPhone, kc = inEvent.keyCode, dt = inEvent.dispatchTarget;
+		// onchange event fails to fire on enter key for Windows Phone 8, so we force blur
+		if (wp <= 8 && kc == 13 && this.tag == "input" && dt.hasNode()) {
+			dt.node.blur();
+		}
+	},
 	clear: function() {
 		this.setValue("");
 	},
@@ -104,9 +119,15 @@ enyo.kind({
 			this.node.focus();
 		}
 	},
+	//* Returns true if the Input is focused.
+	hasFocus: function() {
+		if (this.hasNode()) {
+			return document.activeElement === this.node;
+		}
+	},
 	// note: we disallow dragging of an input to allow text selection on all platforms
 	dragstart: function() {
-		return true;
+		return this.hasFocus();
 	},
 	focused: function() {
 		if (this.selectOnFocus) {

@@ -7,15 +7,19 @@
 			noImg: false,
 			autoScroll: true,
 			dataTotal: 0,
-		},
+			page1: false,
+			perpartes: false,
+			recents: [],
+		},		
 		wholeHtml: "",
         history: [],
         index: 0,
         base: "",
         urlPrefix: "http://www.google.com/gwt/x?u=",
-        urlSuffix: "&wsc=fa&ct=pg1&whp=30",
         dataReceived: 0,
-        dataNow: 0,		
+        dataNow: 0,
+        scrollEndFired: false,
+        page: 0,	
     },
     components: [
 		 {kind: "Signals", onload: "load"},
@@ -24,22 +28,27 @@
          {name: "web", kind: "enyo.WebService", url: "", handleAs: "text", method: "GET", onResponse: "onWebSuccess", onError: "onWebFailure"},
          {name: "head", kind: "enyo.WebService", method: "HEAD", onResponse: "byteSizeFromUrl", onError: ""},
          
+         
          {kind: "FittableRows", classes: "enyo-fit", components: [        
 			 {name: "mainPane", kind: "onyx.Toolbar", layoutKind: "FittableColumnsLayout", classes: "toolbar", components: [
+				 {name: "favicon", kind: "onyx.Icon", style: "height: 16px; width: 16px;", classes: "favico", src: "icon.png", ontap: "addRecent"},
 					{kind: "onyx.InputDecorator", fit: true, classes: "inputMainDec", alwaysLooksFocused: false, components: [
-						//{kind: "onyx.IconButton", src: "icon.png"},
-							{name: "UrlField", kind: "onyx.Input", selectOnFocus: true, defaultFocus: false, classes: "mainInput", onfocus: "mainFocused", onchange: "", placeholder: "Type the url...", components: [
+						//{name: "favicon", kind: "onyx.Icon", style: "height: 16px; width: 16px;", classes: "favico", src: "icon.png", ontap: "addRecent"},
+							{name: "UrlField", kind: "onyx.Input", selectOnFocus: true, defaultFocus: false, classes: "mainInput", onfocus: "mainFocused", onchange: "", placeholder: $L("Type the url..."), components: [
 								{kind: "onyx.Spinner", name: "loadSpinner", classes: "loadspinner", onStop: "spinnerStop"}
 							]}				
 					]},
 					
-					{kind: "onyx.Button", name: "goButton", content: "Go!", onclick: "inputUrlChange"}	
+					{kind: "onyx.Button", name: "goButton", content: "Go!", onclick: "inputUrlChange"},
+					{kind: "onyx.IconButton", name: "Home", src: "images/home-icon.png", onclick: "goHome"}	
 			]},
 			{classes: "horizontal-shadow-top"},
-			{name: "mainScroller", fit: true, kind: "enyo.Scroller", touch: true, fixedTime: true, classes: "mainScroll", horizontal: "hidden", maxHeightChanged: "scrollerHeight",  ondragstart: "dragStart", onmousedown: "mouseDown", onclick: "mouseDown", components: [				
-                        {name: "Desktop", kind: "enyo.Control", classes: "desktop enyo-selectable", allowHtml: true, ontap: "linkClicked"}
-                  
+			{name: "mainScroller", fit: true, kind: "enyo.Scroller", touch: true, fixedTime: true, classes: "mainScroll", horizontal: "hidden", onScroll: "onScroll", onScrollStart: "onScrollStart", ondragstart: "dragStart", onmousedown: "mouseDown", onclick: "mouseDown", components: [				
+                        {name: "Desktop", kind: "enyo.Control", classes: "desktop enyo-selectable", allowHtml: true, ontap: "linkClicked"},
+                        {name: "Recent", components: [
+						]}             
 			]},
+			{name: "DonateButton", kind: "enyo.Control", allowHtml: true, style: "text-align: center;"},
 			{name: "statuspanel", classes: "status-shadow", content: ""},
 			{classes: "horizontal-shadow-bottom"},
             {kind: "onyx.Toolbar", classes: "bottomtoolbar", layoutKind: "FittableColumnsLayout", components: [
@@ -53,8 +62,7 @@
 				  {name: "ForwardButton", kind: "onyx.Icon", src:"images/menu-icon-forward.png",  onclick: "goForward", disabled: true}
 			]}
 		 ]},
-		 {kind: "Pullout", name: "pullout", classes: "pullout", onTextSize: "TextSize", onLoadImages: "loadImages", onSelectable: "selectableText", onPullout: "Settings"},
-		 {name: "Popup", kind: "onyx.Popup", centered: true, floating: true, classes:"onyx-sample-popup", style: "padding: 10px;"},
+		 {kind: "Pullout", name: "pullout", classes: "pullout", onTextSize: "TextSize", onLoadImages: "loadImages", onSelectable: "selectableText", onPullout: "Settings"}
      ],
      
     create: function (){
@@ -63,16 +71,17 @@
         this.$.loadSpinner.stop();
         this.$.goButton.hide();
         
-        this.$.Desktop.setContent('<div id="main"></p><b>wInNeR</b> - <b>w</b>ebOS <b>I</b>ntelligent <b>N</b>ews <b>R</b>eader</div> by Jan Heřman (72ka) - ENYO 2 ALPHA VERSION!!</p>Type your favorite mobile (or non-mobile) news webpage...</p><img src="1.5/icon.png" />');
+        /* Get preferences */
+		this.getPrefs();
+        
+        this.goHome();
+        
 		this.$.UrlField.setAttribute("x-palm-disable-auto-cap", true);
 
-		/* Get preferences */
-		this.getPrefs();
-		
-		this.$.Desktop.addStyles("font-size: " + this.appPrefs.fontSize*window.devicePixelRatio + "%");
+		this.$.Desktop.addStyles("font-size: " + this.appPrefs.fontSize*window.devicePixelRatio + "% !important");
 		
 		/* DEBUG */
-		//this.$.UrlField.setValue("m.idnes.cz");		
+		//this.$.UrlField.setValue("m.idnes.cz");	
 	
     },
        
@@ -95,7 +104,7 @@
 		};
 	},
 	savePrefs: function () {
-		//this.log("Saving Prefs");
+		this.log("Saving Prefs", enyo.json.stringify(this.appPrefs));
 		enyo.setCookie("winnerAppPrefs", enyo.json.stringify(this.appPrefs));
 	},
 	
@@ -131,32 +140,48 @@
 	  this.history[this.index].html = this.wholeHtml;
 
 		if (nextUrl) {
-			this.$.web.setUrl("http://www.google.com" + nextUrl);
-			this.$.web.send();
-			this.$.mainScroller.scrollToTop();
+			this.nextUrlLink = "http://www.google.com" + nextUrl;
+			
+			if (this.appPrefs.perpartes) {
+				this.page++;
+				//enyo.log("PAGE: ", this.page);
+
+			    this.spinnerStop();
+			    this.$.goButton.hide();
+				this.$.Home.show();
+				this.resized();
+			} else {
+				this.$.web.setUrl(this.nextUrlLink);
+				this.$.web.send();
+				this.$.mainScroller.scrollToTop();
+			};
 		} else {
 			
-			//enyo.log("Processed Article (INDEX " + this.index + "): " + this.history[this.index].articleName);
-			try {
-				/* I expect that the article name is longer than 30 characters */
-				if (this.appPrefs.autoScroll && this.history[this.index].articleName && (this.history[this.index].articleName.length > 30)) {	
-					this.scrollToArticle(this.history[this.index].articleName);
-				};
-			} catch (error) {
-				enyo.log(error);
-				};
-
-			this.$.UrlField.setValue(this.history[this.index].nameForUrlField);
-			
 			this.$.goButton.hide();
+			this.$.Home.show();
 			
 			//fixes the text aligning in input... good to resize for some other reasons too
 			this.resized();
 			this.spinnerStop();
+			this.nextUrlLink = null;
+			//enyo.log("PAGE LAST: ", this.page+1);
+			this.page = 1;
 			};
 
-		this.$.Desktop.setContent("");
+		//this.$.Desktop.setContent("");
 		this.$.Desktop.setContent(this.history[this.index].html);
+		//this.$.UrlField.setValue(this.history[this.index].nameForUrlField);
+		
+		try {
+				/* I expect that the article name is longer than 30 characters */
+				if (this.page == 1 && this.appPrefs.autoScroll && this.history[this.index].articleName && (this.history[this.index].articleName.length > 30)) {	
+					this.scrollToArticle(this.history[this.index].articleName);
+				};
+		} catch (error) {
+			enyo.log(error);
+		};
+		
+		//this.history[this.index].nextUrlLink = this.nextUrlLink;
 		
 		if (!this.appPrefs.noImg) {
 			this.getSizeImagesOnPage(partialHtml);
@@ -164,6 +189,7 @@
 		this.statusPanel(this.bytesToSize(this.dataReceived), 2);
 			
 	 this.naviButtons();
+	 this.scrollEndFired = false;
   },
   
   removeGoogleBanners: function (data) {
@@ -171,9 +197,9 @@
 	  	/* Here is the magic of removing google banners, links processing, etc... */
 	  	  
 	 	/* remove top banner */
-	  	data = data.substring(data.indexOf("<div>", data.indexOf("<div style='background-color:#eff3fa")), data.length);
+	  	data = data.substring(data.indexOf("<div>", data.indexOf("background-color:#eff3fa")), data.length);
 		/* remove bottom banner */
-      	data = data.substring(0, data.indexOf("<div style='background-color:#eff3fa"));
+      	data = data.substring(0, data.indexOf("<div style='margin-left:-.5em;margin-right:-.5em;margin-bottom:-.5em;border-top:1px solid #ccc;background-color:#eff3fa;padding:4px'>"));
       
 		if (this.appPrefs.noImg) {
 			/* images src to absolute path */
@@ -193,6 +219,14 @@
 		regex = new RegExp("'/>", 'g');
 		data = data.replace(regex, "'/><br>");
 		
+		/* remove any font-size settings for availability to change it */
+		regex = new RegExp("font-size:?medium", 'g');
+		data = data.replace(regex, "font-size:" + this.appPrefs.fontSize*window.devicePixelRatio*1.1 + "%");
+		
+		regex = new RegExp("font-size:?small", 'g');
+		data = data.replace(regex, "font-size:" + this.appPrefs.fontSize*window.devicePixelRatio*0.9 + "%");
+		
+		
 		/* change local path to http origin */
 		regex = new RegExp("file://", 'g');
 		data = data.replace(regex, "http://");	
@@ -203,7 +237,7 @@
   
   getNextUrlFromRawData: function (data) {
 	  
-	  var nextUrlData = data.substring(data.lastIndexOf("<div style='background-color:#eff3fa"), data.length);   
+	  var nextUrlData = data.substring(data.lastIndexOf("<div style='margin-left:-.5em;margin-right:-.5em;margin-bottom:-.5em;border-top:1px solid #ccc;background-color:#eff3fa"), data.length);   
       nextUrlData = nextUrlData.substring(0, nextUrlData.indexOf("<form action='/search'>"));     
       var nextUrl = $(nextUrlData).find("a").attr("href");
       
@@ -236,13 +270,12 @@
 		 /* If was NOT shown yet */
 		 if (inEvent.target.getAttribute("src") == "images/image-generic.png") {
 			 //enyo.log("was NOT shown yet: ");
-			 inEvent.target.src = inEvent.target.title; //change back original img scr instead of image-generic.png
+			 inEvent.target.src = inEvent.target.title; //change back original img src instead of image-generic.png
 			 inEvent.target.removeAttribute("title"); //remove title attribute from img
 			 this.history[this.index].html = document.getElementById("app_Desktop").innerHTML;
 			 /* Check the image byte size */
 			 this.$.head.setUrl(inEvent.target.src);
 			 this.$.head.send();
-			 //return; //just load the image, and then do nothing
 		 /* If was shown yet */
 		 } else {
 			 //enyo.log("was shown yet: " + linkImg);
@@ -291,9 +324,12 @@
 	 this.$.loadSpinner.start();
 
 	 this.history[this.index].scrollTop = this.$.mainScroller.getScrollTop();
+	 this.history[this.index].nextUrlLink = this.nextUrlLink;
 
 	 /* Important: Count the index here, not on other place */
 	 this.index++;
+	 
+	 this.page = 0;
 	 
 	 this.history[this.index] = [];
 	 this.history[this.index].articleName = inEvent.target.innerText;
@@ -301,14 +337,13 @@
 	 
 	 this.history[this.index].base = link.substring(link.lastIndexOf("://")+3, link.indexOf("/", link.lastIndexOf("://")+3));
 	 this.history[this.index].nameForUrlField = this.history[this.index].base + ": " + inEvent.target.innerHTML;
-
-	 //enyo.log("Stored Article (INDEX " + this.index + "): " + this.history[this.index].articleName);
+	 this.$.UrlField.setValue(this.history[this.index].nameForUrlField);
 	 
 	 this.wholeHtml = "";
 	 
 	 this.$.Desktop.setContent("");
 	 
-	 this.$.web.setUrl(link + this.urlSuffix);
+	 this.$.web.setUrl(link + this.getUrlSuffix());
      this.$.web.send();
 
   },
@@ -323,24 +358,33 @@
   
   inputUrlChange: function(inRequest, inEvent) {
 
-	inEvent.preventDefault();
+	//inEvent.preventDefault();
 	this.dataReceived = 0;
 	this.$.UrlField.onchange = "";
     var pre = "";
     var UrlFieldValue = this.$.UrlField.getValue();
     this.index++;
     this.history[this.index] = [];
-    this.lastUrl = this.urlPrefix + UrlFieldValue + this.urlSuffix;
+    this.lastUrl = this.urlPrefix + UrlFieldValue + this.getUrlSuffix();
     if (UrlFieldValue.indexOf("http://") == -1) pre = "http://";
     this.history[this.index].realUrl = pre + UrlFieldValue;
     this.history[this.index].nameForUrlField = this.history[this.index].realUrl;
     this.$.UrlField.setValue(this.history[this.index].realUrl);
     this.wholeHtml = "";
     
+    this.log("URL:", this.lastUrl);
     this.$.Desktop.setContent("");
+    
+    this.page = 0;
     
     this.$.web.setUrl(this.lastUrl);
     this.$.web.send();
+    
+    /* try to get favicon from real URL head */
+    this.$.favicon.setSrc(this.getFavicon(this.history[this.index].realUrl));
+    
+    /* Hide the recent page buttons */
+    this.$.Recent.hide();
      
      this.$.loadSpinner.start();
      try {
@@ -352,6 +396,10 @@
 	this.$.UrlField.hasNode().blur();
 	
 	this.$.keyDownSignal.onkeydown = "handleKeyDown";
+	
+	/* Hides the donate button control */
+	this.$.DonateButton.hide();
+	this.resized();
 
   },
   
@@ -361,7 +409,10 @@
 			inEvent.preventDefault();
 			this.history[this.index].scrollTop = this.$.mainScroller.getScrollTop();
 			this.history[this.index].html = document.getElementById("app_Desktop").innerHTML;
+			this.history[this.index].nextUrlLink = this.nextUrlLink;
 			this.index--;
+			this.nextUrlLink = this.history[this.index].nextUrlLink;
+			this.wholeHtml = this.history[this.index].html;
 			this.animate(this.$.Desktop, 200, -1);
 			setTimeout((function(){	
 			this.$.Desktop.setContent(this.history[this.index].html);
@@ -381,7 +432,10 @@
 			inEvent.preventDefault();
 			this.history[this.index].scrollTop = this.$.mainScroller.getScrollTop();
 			this.history[this.index].html = document.getElementById("app_Desktop").innerHTML;
+			this.history[this.index].nextUrlLink = this.nextUrlLink;
 			this.index++;
+			this.nextUrlLink = this.history[this.index].nextUrlLink;
+			this.wholeHtml = this.history[this.index].html;
 			this.animate(this.$.Desktop, 200, 1);
 			setTimeout((function(){	
 			 this.$.Desktop.setContent(this.history[this.index].html);
@@ -423,6 +477,7 @@
 	mainFocused: function() {
 		//enyo.log("FOCUSED");
 		this.$.goButton.show();
+		this.$.Home.hide();
 		this.resized();
 		/* Change the field content to real url instead of name of article */
 		try {
@@ -435,9 +490,9 @@
 
 		var previousContent = this.history[this.index].html;	
 		//find only the first match - this is probably our article name
-		var regex = new RegExp(articleName, 'mi');
-		//enyo.log("REGEX", regex);
-		previousContent = previousContent.replace(regex, "<span id='scrollhere'>" + articleName + "</span>");
+		var regex = new RegExp(articleName.substring(1, articleName.length), 'mi');
+		//enyo.log("ARTICLENAME", articleName);
+		previousContent = previousContent.replace(regex, "<span id='scrollhere'>" + articleName.substring(1, articleName.length) + "</span>");
 		this.$.Desktop.setContent(previousContent);
 		try {
 			document.getElementById("scrollhere").scrollIntoView(true);
@@ -451,7 +506,8 @@
 		if (inEvent.keyIdentifier == "Back") return;
         inEvent.preventDefault();
         this.$.UrlField.selectOnFocus = false;
-        this.$.UrlField.hasNode().focus();
+        //this.$.UrlField.hasNode().focus();
+        this.$.UrlField.focus();
         this.$.UrlField.setValue(String.fromCharCode(inEvent.keyCode).toLowerCase());
         this.$.keyDownSignal.onkeydown = "";
         this.$.UrlField.selectOnFocus = true;
@@ -529,6 +585,38 @@
 		return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
 	},
 	
+	getUrlSuffix: function(link) {
+		var suffix = this.appPrefs.page1 ? "" : "&wsc=fa&ct=pg1&whp=30";
+		return suffix;
+	},
+	
+	onScroll: function(inSender, inEvent) {
+		//enyo.log("EV", inEvent);
+		//if (this.nextUrlLink && this.appPrefs.perpartes && !this.scrollEndFired && (inEvent.originator.bottomBoundary + this.$.mainScroller.getScrollTop()) > -100) {
+		if (this.nextUrlLink && (inEvent.originator.bottomBoundary + this.$.mainScroller.getScrollTop()) > -100) {
+			//enyo.log("END SCROLLER", inEvent.originator.bottomBoundary);
+			this.$.mainScroller.onScroll = null;
+			this.scrollerVertHeight = inEvent.originator.bottomBoundary;
+			this.scrollEndFired = true;
+			this.$.Desktop.addContent("<div id='loading-next'><img src='lib/onyx/images/spinner-light.gif'/><br>Loading next part...</div>");
+			//this.$.mainScroller.scrollToBottom();
+			this.$.mainScroller.scrollTo(0, -inEvent.originator.bottomBoundary);
+			this.$.web.setUrl(this.nextUrlLink);
+			this.$.web.send();
+			this.$.loadSpinner.start();
+			this.nextUrlLink = null;
+			//enyo.log("END SCROLLER2", this.scrollerVertHeight);
+		};
+		return true;
+	},
+	
+	onScrollStart: function(inSender, inEvent) {
+		//enyo.log("BOUNDARY START", inEvent.originator.bottomBoundary);
+		this.$.mainScroller.onScroll = "onScroll";
+		this.scrollerVertHeight = inEvent.originator.bottomBoundary;
+		//enyo.log("TOP", this.$.mainScroller.getScrollTop());
+	},
+	
 	animate: function(element, time, direction) {
 
 		element.setStyle("-webkit-transition-property: all; -webkit-transition-duration: " + time/1000 + "s; -webkit-transition-timing-function: ease-out; -webkit-transform: translateX(" + direction*(-window.innerWidth) + "px); opacity: 0;");
@@ -539,6 +627,97 @@
 			 element.setStyle("-webkit-transition-property: all; -webkit-transition-duration: " + time/1000 + "s; -webkit-transition-timing-function: ease-in; -webkit-transform: translateX(0px); opacity: 1;");
 		 }).bind(this), time*2);
 	 
+	},
+	
+	getFavicon: function(url) {
+		var src = "http://g.etfv.co/" + url;
+		//enyo.log("FAVHEAD: ", src);
+		return src;
+	},
+	
+	favclick: function(inSender, inEvent) {
+		this.$.UrlField.setValue(inSender.content);
+		this.inputUrlChange(inSender, inEvent);
+		
+	},
+	
+	goRecent: function(inSender, inEvent) {
+		this.$.UrlField.setValue(inSender.page);
+		this.inputUrlChange();		
+	},
+	
+	getRecents: function() {
+		/* This function gets the recents from the cookies and set the buttons to the first page */
+		
+		this.$.Recent.destroyClientControls();
+		
+		var recents = this.appPrefs.recents;
+
+		for (var i = 0; i < recents.length; i++) {
+			this.$.Recent.createComponent(
+				{name: i, kind: "onyx.Button", classes: "recentButton", ontap: "goRecent" , onhold: "removeRecent", page: recents[i].url, components: [
+					{kind: "onyx.Icon", src: recents[i].favicon, style: "width: 16px; height: 16px", classes: "recent"},
+					{content: recents[i].name}
+				]}, {owner: this}
+				);		
+		};	
+		this.$.Recent.render();
+	},
+	
+	addRecent: function() {
+		
+		//this.appPrefs.recents = []; //debug only
+		
+		var toAdd = {};
+
+		toAdd.url = this.history[this.index].realUrl;
+		toAdd.name = this.history[this.index].realUrl.substring(this.history[this.index].realUrl.indexOf(".")+1);
+		toAdd.favicon = "http://g.etfv.co/" + this.history[this.index].realUrl;
+		toAdd.index = this.appPrefs.recents.length;
+		
+		this.appPrefs.recents.push(toAdd);
+		
+		this.savePrefs();
+		
+		this.statusPanel("Favorite saved...", 4);
+		
+	},
+	
+	removeRecent: function(inSender) {
+		
+		
+		this.appPrefs.recents.splice(inSender.name, 1);
+		
+		inSender.destroy();
+		
+		this.$.Recent.render();
+		
+		this.savePrefs();
+		
+		this.statusPanel("Favorite deleted...", 4);
+	},
+	
+	goHome: function() {
+		
+		this.nextUrlLink = null;
+		
+		//this.history = [];
+		
+		var donateHTML = '<form action="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=5CTRZJLKKUBS4&lc=CZ&item_name=Jan%20Herman&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_SM%2egif%3aNonHosted" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=5CTRZJLKKUBS4&lc=CZ&item_name=Jan%20Herman&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_SM%2egif%3aNonHosted" method="post"><input type="image" src="images/donate.gif" style="text-align: center" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!"></form>';
+        
+        this.$.Desktop.setContent('<div id="main"></p><b>wInNeR</b> - <b>w</b>ebOS <b>I</b>ntelligent <b>N</b>ews <b>R</b>eader</div> by Jan Heřman (72ka), v. 0.0.5</p>');
+
+		this.$.DonateButton.setContent(donateHTML);
+		
+		this.$.DonateButton.show();
+		
+		/* Get Recent pages */
+		this.getRecents();
+		
+		this.$.Recent.show();
+		
+		this.resized();
+		
 	},
 	
 	mouseDown: function(inSender, inEvent) {
@@ -554,6 +733,10 @@
 			// Prevent drag propagation on horizontal drag events
 			return true;
 		}
+	},
+	
+	donate: function() {
+		enyo.log("DONATE: ");
 	},
 	
     aboutClick: function(){

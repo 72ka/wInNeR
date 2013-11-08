@@ -10,7 +10,7 @@ enyo.kind({
 		onActivate: ""
 	},
 	published: {
-		//* Value of checkbox; true if checked 
+		//* Value of checkbox; true if checked
 		checked: false,
 		//* Group API requirement for determining selected item
 		active: false,
@@ -36,7 +36,7 @@ enyo.kind({
 	},
 	// instance 'checked' property is linked to DOM 'checked' property
 	getChecked: function() {
-		return Boolean(this.getNodeProperty("checked", this.checked));
+		return enyo.isTrue(this.getNodeProperty("checked", this.checked));
 	},
 	checkedChanged: function() {
 		this.setNodeProperty("checked", this.checked);
@@ -46,27 +46,27 @@ enyo.kind({
 	// active property, and onActivate event, are part of "GroupItem" interface
 	// that we support in this object
 	activeChanged: function() {
-		this.active = Boolean(this.active);
+		this.active = enyo.isTrue(this.active);
 		this.setChecked(this.active);
 		this.bubble("onActivate");
 	},
 	// all input type controls support 'value' property
 	setValue: function(inValue) {
-		this.setChecked(Boolean(inValue));
+		this.setChecked(enyo.isTrue(inValue));
 	},
 	getValue: function() {
 		return this.getChecked();
 	},
 	valueChanged: function() {
 		// inherited behavior is to set "value" attribute and node-property
-		// which does not apply to checkbox (uses "checked") so 
+		// which does not apply to checkbox (uses "checked") so
 		// we squelch the inherited method
 	},
 	change: function() {
 		this.setActive(this.getChecked());
 	},
 	click: function(inSender, inEvent) {
-		// Various versions of IE (notably IE8) do not fire 'onchange' for 
+		// Various versions of IE (notably IE8) do not fire 'onchange' for
 		// checkboxes, so we discern change via 'click'.
 		// Note: keyboard interaction (e.g. pressing space when focused) fires
 		// a click event.

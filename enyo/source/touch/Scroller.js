@@ -54,13 +54,17 @@ enyo.kind({
 			* <a href="#enyo.ScrollStrategy">ScrollStrategy</a> is the default
 				and implements no scrolling, relying instead on the environment
 				to scroll properly.
-			
+
 			* <a href="#enyo.TouchScrollStrategy">TouchScrollStrategy</a>
 				implements a touch scrolling mechanism.
-			
+
 			* <a href="#enyo.TranslateScrollStrategy">TranslateScrollStrategy</a>
 				implements a touch scrolling mechanism using translations; it is
-				currently recommended only for Android 3 and 4.
+				currently recommended only for Android 3 and 4 & Windows Phone 8.
+
+			* <a href="#enyo.TransitionScrollStrategy">TransitionScrollStrategy</a>
+				implements a touch scrolling mechanism using CSS transitions; it is
+				currently recommended only for iOS 5 and later.
 		*/
 		strategyKind: "ScrollStrategy",
 		//* Set to true to display a scroll thumb in touch scrollers
@@ -74,13 +78,6 @@ enyo.kind({
 		//* Fires when a scrolling action stops.
 		onScrollStop: ""
 	},
-	handlers: {
-		onscroll: "domScroll",
-		onScrollStart: "scrollStart",
-		onScroll: "scroll", 
-		onScrollStop: "scrollStop"
-	},
-	classes: "enyo-scroller",
 	/**
 		If true (the default) and a touch scroller, the scroller will overscroll
 		and bounce back at the edges
@@ -96,11 +93,19 @@ enyo.kind({
 	*/
 	preventScrollPropagation: true,
 	//* @protected
+	handlers: {
+		onscroll: "domScroll",
+		onScrollStart: "scrollStart",
+		onScroll: "scroll",
+		onScrollStop: "scrollStop"
+	},
+	classes: "enyo-scroller",
 	statics: {
 		osInfo: [
 			{os: "android", version: 3},
 			{os: "androidChrome", version: 18},
 			{os: "androidFirefox", version: 16},
+			{os: "firefoxOS", version: 16},
 			{os: "ios", version: 5},
 			{os: "webos", version: 1e9},
 			{os: "blackberry", version:1e9}
@@ -113,7 +118,7 @@ enyo.kind({
 				}
 			}
 			// special detection for IE10+ on touch devices
-			if (enyo.platform.ie >= 10 && enyo.platform.touch) {
+			if ((enyo.platform.ie >= 10 || enyo.platform.windowsPhone >= 8) && enyo.platform.touch) {
 				return true;
 			}
 		},
@@ -130,10 +135,11 @@ enyo.kind({
 			return true;
 		},
 		getTouchStrategy: function() {
-			return enyo.platform.android >= 3 ? "TranslateScrollStrategy" : "TouchScrollStrategy";
+			return (enyo.platform.android >= 3) || (enyo.platform.windowsPhone === 8)
+				? "TranslateScrollStrategy"
+				: "TouchScrollStrategy";
 		}
 	},
-	//* @protected
 	controlParentName: "strategy",
 	create: function() {
 		this.inherited(arguments);
@@ -171,7 +177,10 @@ enyo.kind({
 		}
 	},
 	createStrategy: function() {
-		this.createComponents([{name: "strategy", maxHeight: this.maxHeight, kind: this.strategyKind, thumb: this.thumb, preventDragPropagation: this.preventDragPropagation, overscroll:this.touchOverscroll, isChrome: true}]);
+		this.createComponents([{name: "strategy", maxHeight: this.maxHeight,
+			kind: this.strategyKind, thumb: this.thumb,
+			preventDragPropagation: this.preventDragPropagation,
+			overscroll:this.touchOverscroll, isChrome: true}]);
 	},
 	getStrategy: function() {
 		return this.$.strategy;
@@ -209,7 +218,7 @@ enyo.kind({
 	verticalChanged: function() {
 		this.$.strategy.setVertical(this.vertical);
 	},
-	// FIXME: these properties are virtual; property changed methods are fired only if 
+	// FIXME: these properties are virtual; property changed methods are fired only if
 	// property value changes, not if getter changes.
 	//* Sets scroll position along horizontal axis.
 	setScrollLeft: function(inLeft) {
@@ -260,6 +269,7 @@ enyo.kind({
 	scrollToNode: function(inNode, inAlignWithTop) {
 		this.$.strategy.scrollToNode(inNode, inAlignWithTop);
 	},
+	//* @protected
 	//* Normalizes scroll event to _onScroll_.
 	domScroll: function(inSender, e) {
 		// if a scroll event originated here, pass it to our strategy to handle
@@ -274,7 +284,8 @@ enyo.kind({
 		should be allowed to propagate.
 	*/
 	shouldStopScrollEvent: function(inEvent) {
-		return (this.preventScrollPropagation && inEvent.originator.owner != this.$.strategy);
+		return (this.preventScrollPropagation &&
+			inEvent.originator.owner != this.$.strategy);
 	},
 	/**
 		Calls _shouldStopScrollEvent_ to determine whether current scroll event
@@ -288,7 +299,8 @@ enyo.kind({
 		// note: scroll event can be native dom or generated.
 		if (inEvent.dispatchTarget) {
 			// allow a dom event if it orignated with this scroller or its strategy
-			return this.preventScrollPropagation && !(inEvent.originator == this || inEvent.originator.owner == this.$.strategy);
+			return this.preventScrollPropagation && !(inEvent.originator == this ||
+				inEvent.originator.owner == this.$.strategy);
 		} else {
 			return this.shouldStopScrollEvent(inEvent);
 		}
@@ -300,15 +312,20 @@ enyo.kind({
 	scrollStop: function(inSender, inEvent) {
 		return this.shouldStopScrollEvent(inEvent);
 	},
+	//* @public
+	//* Scroll to the top of the scrolling region.
 	scrollToTop: function() {
 		this.setScrollTop(0);
 	},
+	//* Scroll to the bottom of the scrolling region.
 	scrollToBottom: function() {
 		this.setScrollTop(this.getScrollBounds().maxTop);
 	},
+	//* Scroll to the right edge of the scrolling region.
 	scrollToRight: function() {
-		this.setScrollTop(this.getScrollBounds().maxLeft);
+		this.setScrollLeft(this.getScrollBounds().maxLeft);
 	},
+	//* Scroll to the left edge of the scrolling region.
 	scrollToLeft: function() {
 		this.setScrollLeft(0);
 	},

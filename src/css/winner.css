@@ -19,6 +19,7 @@
 
 /* top, right, bottom, left */
 .desktop {
+	//font-size: small;
  }
 
 .body {
@@ -52,7 +53,71 @@
 }
 
 /* adapt to smaller displays */
-@media (max-width: 320px) {
+@media (max-height: 320px) {
+
+	.bottomtoolbar {
+		height: 0px;
+		margin-bottom: -20px;
+	}
+
+	.toolbar {
+		height: 0px;
+		margin-top: -20px;
+	}
+
+	.horizontal-shadow-bottom {
+		height: 0px;
+	}
+
+	.horizontal-shadow-top {
+		height: 0px;	
+	}
+	
+	.pullout {
+		top: 0px;
+	}
+	
+	.pullout-shadow {
+		display: none;
+	}
+	
+	.status-shadow {
+		bottom: 1px;
+	}
+
+}
+
+@media (max-height: 480px) and (-webkit-min-device-pixel-ratio: 1.5) {
+
+	.bottomtoolbar {
+		height: 0px;
+		margin-bottom: -20px;
+	}
+
+	.toolbar {
+		height: 0px;
+		margin-top: -20px;
+	}
+
+	.horizontal-shadow-bottom {
+		height: 0px;
+	}
+
+	.horizontal-shadow-top {
+		height: 0px;	
+	}
+	
+	.pullout {
+		top: 0px;
+	}
+	
+	.pullout-shadow {
+		display: none;
+	}
+	
+	.status-shadow {
+		bottom: 1px;
+	}
 
 }
 
@@ -104,7 +169,7 @@
 }
 
 .settings {
-	padding: 10px;
+	margin: 10px;
 }
 
 .prefstogglebutton {
@@ -154,4 +219,47 @@
 	text-align: center;
 	height: 30px;
 	width: 100%;
+}
+
+#loading-next {
+	width: 100%;
+	height: 200px;
+	text-align: center;
+}
+
+.info-icon {
+	width: 100%;
+	height: 32px;
+	margin-top: -5px;
+	margin-bottom: -9px;
+	vertical-align: middle;
+	background-image: url(../../images/info.png);
+	background-position: right center;
+	background-repeat: no-repeat;
+}
+
+.onyx-popup {
+		padding: 10px;
+		width: 80%;
+		text-align: center;
+}
+
+.favico {
+	background-position: center center;
+	background-repeat: no-repeat;
+	background-size: 100%;
+}
+
+.recentButton {
+	height: 50px;
+	width: 48%;
+	margin: 2px 2px 2px 2px !important;
+}
+
+.recent {
+	margin-right: 5px;
+	//background-image: url(http://g.etfv.co/http://m.idnes.cz);
+	background-position: center center;
+	background-repeat: no-repeat;
+	background-size: 100%;
 }
