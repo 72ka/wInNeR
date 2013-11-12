@@ -29,12 +29,12 @@
          {name: "head", kind: "enyo.WebService", method: "HEAD", onResponse: "byteSizeFromUrl", onError: ""},
          
          
-         {kind: "FittableRows", classes: "enyo-fit", components: [        
+         {kind: "FittableRows", name: "Main", classes: "enyo-fit", components: [        
 			 {name: "mainPane", kind: "onyx.Toolbar", layoutKind: "FittableColumnsLayout", classes: "toolbar", components: [
-				 {name: "favicon", kind: "onyx.Icon", style: "height: 16px; width: 16px;", classes: "favico", src: "icon.png", ontap: "addRecent"},
+				 {name: "favicon", kind: "onyx.Icon", style: "height: 16px; width: 16px;", classes: "favico", src: "icon.png", ontap: "showPopUpRecents"},
 					{kind: "onyx.InputDecorator", fit: true, classes: "inputMainDec", alwaysLooksFocused: false, components: [
 						//{name: "favicon", kind: "onyx.Icon", style: "height: 16px; width: 16px;", classes: "favico", src: "icon.png", ontap: "addRecent"},
-							{name: "UrlField", kind: "onyx.Input", selectOnFocus: true, defaultFocus: false, classes: "mainInput", onfocus: "mainFocused", onchange: "", placeholder: $L("Type the url..."), components: [
+							{name: "UrlField", kind: "onyx.Input", selectOnFocus: true, defaultFocus: false, classes: "mainInput truncating-text", onfocus: "mainFocused", onchange: "", placeholder: $L("Type the url..."), components: [
 								{kind: "onyx.Spinner", name: "loadSpinner", classes: "loadspinner", onStop: "spinnerStop"}
 							]}				
 					]},
@@ -44,14 +44,14 @@
 			]},
 			{classes: "horizontal-shadow-top"},
 			{name: "mainScroller", fit: true, kind: "enyo.Scroller", touch: true, fixedTime: true, classes: "mainScroll", horizontal: "hidden", onScroll: "onScroll", onScrollStart: "onScrollStart", ondragstart: "dragStart", onmousedown: "mouseDown", onclick: "mouseDown", components: [				
-                        {name: "Desktop", kind: "enyo.Control", classes: "desktop enyo-selectable", allowHtml: true, ontap: "linkClicked"},
+                        {name: "Desktop", kind: "enyo.Control", classes: "desktop enyo-selectable", allowHtml: true, ontap: "linkClicked", onhold: "desktopHold"},
                         {name: "Recent", components: [
 						]}             
 			]},
 			{name: "DonateButton", kind: "enyo.Control", allowHtml: true, style: "text-align: center;"},
 			{name: "statuspanel", classes: "status-shadow", content: ""},
 			{classes: "horizontal-shadow-bottom"},
-            {kind: "onyx.Toolbar", classes: "bottomtoolbar", layoutKind: "FittableColumnsLayout", components: [
+            {kind: "onyx.Toolbar", classes: "bottomtoolbar", name: "bottomPane", layoutKind: "FittableColumnsLayout", components: [
 				  {name: "BackButton", kind: "onyx.Icon", src:"images/menu-icon-back.png", onclick: "goBack", disabled: true},
 				  {fit: true, classes: "center-in-fittable", components: [
 					  {name: "smallerTextButton", classes: "center-icon", kind: "onyx.Icon", src:"images/format_font_size_less.png",  onclick: "smallerText"},
@@ -61,21 +61,38 @@
 				  ]},
 				  {name: "ForwardButton", kind: "onyx.Icon", src:"images/menu-icon-forward.png",  onclick: "goForward", disabled: true}
 			]}
-		 ]},
-		 {kind: "Pullout", name: "pullout", classes: "pullout", onTextSize: "TextSize", onLoadImages: "loadImages", onSelectable: "selectableText", onPullout: "Settings"}
+		 ]},		 
+		{name: "popupRecents", kind: "onyx.Popup", allowHtml: true, centered: true, floating: true, scrim: true, scrimWhenModal: false, components: [
+			{content: "Add to Favorites?", name: "AddFavPopUp", classes: "truncating-text"},
+			{tag: "br"},
+			{kind:"onyx.Button", content: "Yes", value: 1, classes: "onyx-affirmative", ontap:"recentsPopUpButtonTapped"},
+			{kind:"onyx.Button", content: "No", value: 0, classes: "onyx-negative", ontap:"recentsPopUpButtonTapped"}
+		]},
+		{name: "popupRecentsButton", kind: "onyx.Popup", allowHtml: true, centered: true, floating: true, scrim: true, components: [
+			{content: "Rename or Delete Favorite?"},
+			{tag: "br"},
+			{kind: "onyx.InputDecorator", components: [
+					{kind: "onyx.Input", name: "ModifyFavPopUp", onkeypress: "inputFavModify", placeholder: "Enter new name...", selectOnFocus: true}
+			]},
+			{tag: "p"},
+			{kind:"onyx.Button", name: "firstChoiceRecentsButton", content: "Rename", classes: "onyx-blue", value: 1, ontap:"renameRecent"},
+			{kind:"onyx.Button", name: "secondChoiceRecentsButton", content: "Delete", classes: "onyx-negative", value: 0, ontap:"removeRecent"},
+			{tag: "br"},
+		]},
+		{kind: "Pullout", name: "pullout", classes: "pullout", onTextSize: "TextSize", onLoadImages: "loadImages", onSelectable: "selectableText", onPullout: "Settings"}
      ],
      
     create: function (){
 
         this.inherited(arguments);
+        
         this.$.loadSpinner.stop();
         this.$.goButton.hide();
-        
-        /* Get preferences */
-		this.getPrefs();
-        
-        this.goHome();
-        
+
+		/* Get preferences */
+		/* fix for http://forums.enyojs.com/discussion/1149/appstart-on-webos-old-screens-get-shown */
+		enyo.asyncMethod(this, "getPrefs", "start");
+
 		this.$.UrlField.setAttribute("x-palm-disable-auto-cap", true);
 
 		this.$.Desktop.addStyles("font-size: " + this.appPrefs.fontSize*window.devicePixelRatio + "% !important");
@@ -94,17 +111,20 @@
 		this.savePrefs();
 	},
 	
-	getPrefs: function () {
+	getPrefs: function (action) {
 		//get prefs from the cookie if they exist
 		var cookie = enyo.getCookie("winnerAppPrefs");
-		enyo.log("COOKIES: ", cookie);
+		//enyo.log("COOKIES: ", cookie);
 		if (cookie) {
 			// if it exists, else use the default
 			this.appPrefs = enyo.mixin(this.appPrefs, enyo.json.parse(cookie));
 		};
+		
+		/* goHome for the first start */
+		if (action == "start") this.goHome();
 	},
 	savePrefs: function () {
-		this.log("Saving Prefs", enyo.json.stringify(this.appPrefs));
+		//this.log("Saving Prefs", enyo.json.stringify(this.appPrefs));
 		enyo.setCookie("winnerAppPrefs", enyo.json.stringify(this.appPrefs));
 	},
 	
@@ -631,7 +651,6 @@
 	
 	getFavicon: function(url) {
 		var src = "http://g.etfv.co/" + url;
-		//enyo.log("FAVHEAD: ", src);
 		return src;
 	},
 	
@@ -650,14 +669,29 @@
 		/* This function gets the recents from the cookies and set the buttons to the first page */
 		
 		this.$.Recent.destroyClientControls();
-		
+
 		var recents = this.appPrefs.recents;
+		
+		this.$.Recent.createComponent(
+			{kind: "onyx.Groupbox", components: [
+				{tag: "br"},
+				{kind: "onyx.GroupboxHeader", content: "Winner v0.0.6"},
+				{content: "<b>w</b>ebOS <b>In</b>telligent <b>Ne</b>ws <b>R</b>eader<br>Author: Jan Heřman (72ka)", allowHtml: true, style: "padding: 8px;"},
+			]},{owner: this}
+		);
+		
+		/* Add Favorites header only if they exists */
+		if (recents.length > 0) {
+			this.$.Recent.createComponent(
+				{name: "Favorite", kind: "onyx.GroupboxHeader", content: "Favorites (" + recents.length + ")", classes: "desktop-header"}, {owner: this}
+			);
+		};
 
 		for (var i = 0; i < recents.length; i++) {
 			this.$.Recent.createComponent(
-				{name: i, kind: "onyx.Button", classes: "recentButton", ontap: "goRecent" , onhold: "removeRecent", page: recents[i].url, components: [
+				{name: "Favorite" + i, ID: i, kind: "onyx.Button", classes: "recentButton", ontap: "goRecent" , onhold: "onRecentButtonHold", page: recents[i].url, recname: recents[i].name, components: [
 					{kind: "onyx.Icon", src: recents[i].favicon, style: "width: 16px; height: 16px", classes: "recent"},
-					{content: recents[i].name}
+					{content: recents[i].name, classes: "truncating-text"}
 				]}, {owner: this}
 				);		
 		};	
@@ -666,50 +700,127 @@
 	
 	addRecent: function() {
 		
-		//this.appPrefs.recents = []; //debug only
-		
-		var toAdd = {};
+			var toAdd = {};
 
-		toAdd.url = this.history[this.index].realUrl;
-		toAdd.name = this.history[this.index].realUrl.substring(this.history[this.index].realUrl.indexOf(".")+1);
-		toAdd.favicon = "http://g.etfv.co/" + this.history[this.index].realUrl;
-		toAdd.index = this.appPrefs.recents.length;
+			toAdd.url = this.history[this.index].realUrl;
+			toAdd.name = this.history[this.index].realUrl.substring(this.history[this.index].realUrl.indexOf(".")+1);
+			toAdd.favicon = "http://g.etfv.co/" + this.history[this.index].realUrl;
+			toAdd.index = this.appPrefs.recents.length;
+			
+			this.appPrefs.recents.push(toAdd);
+			
+			this.savePrefs();
+			
+			this.statusPanel("Favorite saved...", 4);
+	
+	},
+	
+	onRecentButtonHold: function(inSender, inEvent) {
 		
-		this.appPrefs.recents.push(toAdd);
-		
-		this.savePrefs();
-		
-		this.statusPanel("Favorite saved...", 4);
-		
+		inEvent.preventDefault();
+
+		this.$.ModifyFavPopUp.setValue(inSender.recname);
+
+		/* Disable auto-capitalization on webOS devices */
+		this.$.ModifyFavPopUp.setAttribute("x-palm-disable-auto-cap", "true");
+        this.$.ModifyFavPopUp.setAttribute("x-palm-title-cap", null);
+
+		this.recentToModify = inSender;
+
+		this.$.popupRecentsButton.show();
+
+		this.$.ModifyFavPopUp.focus();
 	},
 	
 	removeRecent: function(inSender) {
 		
+		this.appPrefs.recents.splice(this.recentToModify.ID, 1);
 		
-		this.appPrefs.recents.splice(inSender.name, 1);
+		this.recentToModify.destroy();
 		
-		inSender.destroy();
+		this.recentToModify = null;
 		
-		this.$.Recent.render();
-		
+		this.$.popupRecentsButton.hide();
+			
 		this.savePrefs();
 		
 		this.statusPanel("Favorite deleted...", 4);
+		
+		/* Update the number of favorites on the header */
+		this.$.Favorite.setContent("Favorites (" + this.appPrefs.recents.length + ")");
+		
+		this.$.Recent.render();
+
+	},
+	
+	renameRecent: function(inSender) {
+		
+		for (var i = 0; i < this.appPrefs.recents.length; i++) {
+			if (this.appPrefs.recents[i].name == this.recentToModify.recname ) {
+				this.appPrefs.recents[i].name = this.$.ModifyFavPopUp.getValue();
+				};
+		};	
+		
+		this.savePrefs();
+		
+		this.getRecents();
+			
+		this.recentToModify = null;
+		
+		this.$.popupRecentsButton.hide();
+
+		this.statusPanel("Favorite renamed...", 2);
+
+		this.$.Recent.render();
+	
+	},
+
+	inputFavModify: function(inSender, inEvent) {
+		if (inEvent.keyCode == 13) {
+			this.renameRecent();
+		}
+	},
+	
+	recentsPopUpButtonTapped: function(inSender) {
+		
+		if(inSender.value == 1) {
+			this.addRecent();
+		}
+		
+		this.$.popupRecents.hide();
+		
+	},
+	
+	showPopUpRecents: function() {
+		
+		try {	
+			this.$.AddFavPopUp.setContent("Add " + this.history[this.index].realUrl.substring(this.history[this.index].realUrl.indexOf(".")+1) + " to Favorites?");
+			this.$.popupRecents.show();
+		} catch (error) {};
 	},
 	
 	goHome: function() {
 		
+		this.$.mainScroller.scrollToTop();
+		
 		this.nextUrlLink = null;
 		
-		//this.history = [];
+		this.$.ForwardButton.setDisabled(true);
+		this.$.BackButton.setDisabled(true);
 		
+		this.clearHistory();
+
 		var donateHTML = '<form action="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=5CTRZJLKKUBS4&lc=CZ&item_name=Jan%20Herman&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_SM%2egif%3aNonHosted" target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=5CTRZJLKKUBS4&lc=CZ&item_name=Jan%20Herman&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_SM%2egif%3aNonHosted" method="post"><input type="image" src="images/donate.gif" style="text-align: center" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!"></form>';
         
-        this.$.Desktop.setContent('<div id="main"></p><b>wInNeR</b> - <b>w</b>ebOS <b>I</b>ntelligent <b>N</b>ews <b>R</b>eader</div> by Jan Heřman (72ka), v. 0.0.5</p>');
+        this.$.Desktop.setContent('');
 
 		this.$.DonateButton.setContent(donateHTML);
 		
 		this.$.DonateButton.show();
+		
+		this.$.UrlField.setValue("");
+		this.$.favicon.setSrc("icon.png");
+		
 		
 		/* Get Recent pages */
 		this.getRecents();
@@ -717,6 +828,26 @@
 		this.$.Recent.show();
 		
 		this.resized();
+		
+	},
+	
+	clearHistory: function () {
+		this.history = [];
+	},
+	
+	desktopHold: function(inSender, inEvent) {
+		//enyo.log("HOLD", this.$.mainPane.getAttribute("style"));
+		if (this.$.mainPane.getAttribute("style")) {
+			this.$.mainPane.show();
+			this.$.bottomPane.show();
+			this.statusPanel("Fullscreen deactivated", 2);
+		} else {
+			this.$.mainPane.hide();
+			this.$.bottomPane.hide();
+			this.statusPanel("Fullscreen activated", 2);
+		};
+		this.resized();
+		
 		
 	},
 	
@@ -743,3 +874,4 @@
 		//reserved
     }
 });
+

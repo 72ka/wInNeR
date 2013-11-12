@@ -66,11 +66,11 @@
 	}
 
 	.horizontal-shadow-bottom {
-		height: 0px;
+		display: none;
 	}
 
 	.horizontal-shadow-top {
-		height: 0px;	
+		display: none;	
 	}
 	
 	.pullout {
@@ -87,6 +87,21 @@
 
 }
 
+
+/* Disable shadows on HP Veer */
+@media (max-height: 400px) {
+
+	.horizontal-shadow-bottom {
+		display: none;
+	}
+
+	.horizontal-shadow-top {
+		display: none;	
+	}
+
+}
+
+
 @media (max-height: 480px) and (-webkit-min-device-pixel-ratio: 1.5) {
 
 	.bottomtoolbar {
@@ -100,11 +115,11 @@
 	}
 
 	.horizontal-shadow-bottom {
-		height: 0px;
+		display: none;
 	}
 
 	.horizontal-shadow-top {
-		height: 0px;	
+		display: none;	
 	}
 	
 	.pullout {
@@ -262,4 +277,18 @@
 	background-position: center center;
 	background-repeat: no-repeat;
 	background-size: 100%;
+}
+
+.truncating-text {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.onyx-popup { 
+	padding: 20px;
+}
+
+.desktop-header {
+	margin: 5px 0 5px 0;
 }
