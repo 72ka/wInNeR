@@ -50,7 +50,7 @@ enyo.kind({
 							 {content: "Total data received", style: "float: left;"},
 							 {classes: "info-icon", name: "TotalDataHelp", onclick: "HelpFeature"},
 						]},
-						{name: "totalData", content: "", classes: "text-preview"},
+						{kind:"onyx.Button", name: "totalData", content: "", onclick: "resetDataCounter", style: "margin-left: 125px !important;"},
 					{tag: "br"},
 				]}
 			]},
@@ -137,7 +137,7 @@ enyo.kind({
 			helptext = "Recommended for extreme low data usage, where the page is splitted to parts and loads only the parts, where you sroll to. Like loading on the fly. Highly recommended for non-mobile optimized pages.";
             break;
         case 'TotalDataHelp':
-			helptext = "Total data received since the application installation.";
+			helptext = "Total data received since the application installation. Push the button to reset the counter.";
             break;
 		};
 	
@@ -147,9 +147,13 @@ enyo.kind({
 	},
 	bytesToSize: function(bytes) {
 		var sizes = ['Bytes', 'kB', 'MB', 'GB', 'TB'];
-		if (bytes == 0) return 'n/a';
+		if (bytes == 0) return '0 kB';
 		var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
 		if (i == 0) return bytes + ' ' + sizes[i]; 
 		return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
-	}
+	},
+	resetDataCounter: function() {
+		this.appPrefs.dataTotal = 0;
+		this.$.totalData.setContent(this.bytesToSize(this.appPrefs.dataTotal));
+	},
 });

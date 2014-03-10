@@ -81,8 +81,12 @@
 		display: none;
 	}
 	
-	.status-shadow {
+	#app_statuspanel {
 		bottom: 1px;
+	}
+	
+	#app_loadingBar {
+		top: -8px;
 	}
 
 }
@@ -130,8 +134,12 @@
 		display: none;
 	}
 	
-	.status-shadow {
+	#app_statuspanel {
 		bottom: 1px;
+	}
+	
+	#app_loadingBar {
+		top: -8px;
 	}
 
 }
@@ -292,3 +300,18 @@
 .desktop-header {
 	margin: 5px 0 5px 0;
 }
+
+.loadingbar {
+	position: absolute !important;
+	top: 42px;
+	left: -8px;
+	z-index: 100000000 !important;
+	width: 100%;
+	background: none !important;
+}
+
+.onyx-progress-bar {	
+	height: 5px !important;
+	width: 100%;	
+}
+
