@@ -1,7 +1,10 @@
 enyo.depends(
-	"kernel",
-	"ajax",
-	"dom",
-	"touch",
-	"ui"
+	'kernel',
+	'ext',
+	'ajax',
+	'data',
+	'dom',
+	'touch',
+	'ui',
+	'enyo.design'
 );

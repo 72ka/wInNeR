@@ -10,3 +10,8 @@
 		max-width: 100%;
 	}
 }
+
+.enyo-panels-force-narrow > * {
+	min-width: 100%;
+	max-width: 100%;
+}

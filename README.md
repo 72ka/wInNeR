@@ -1,12 +1,15 @@
-﻿wInNeR
-======
+## About
 
-WebOS Intelligent News Reader
+bootplate is a template for a minimal Enyo and Onyx web application.
+You would normally use this to setup your local environment then go and modify the
+files to build your own application.  By itself, it does almost nothing.
 
-![screenshot](http://www.webosnation.com/sites/webosnation.com/files/imagecache/w320/apps/screenshots/005_2.PNG)
+## Downloading
 
-This application is simple web reader, focused to every day mobile web news reading and decreasing data usage. The core is something like wrapper around Google mobile proxy and thus the web pages are without scripts, with compressed images. The app caches whole html page and offer very fast navigation to back or forward. The other advantage is ability to change font size on the fly, without touch to viewport! The app contains other intelligent features, like autoscroll to desired article on the new loaded page; browsing without images and shows them only after tap to "picture".
-The app is written in Enyo 2 (openWebOS ready) framework with some webOS legacy features. The Enyo 2 is bundled with the app and it may work on any webOS device. If you like this application, you can consider donation to my homebrew Google Maps development.
+To download a version of bootplate with all of the submodules populated
+for quick use, visit http://enyojs.com/get-enyo/.  The download link in GitHub will
+give you just the bootplate repo without any of the supporting libraries.
 
-Jan Herman (72ka)
-(Czech Republic)
+As an alternative, you can use a Git client to clone this repo and then initialize
+submodules. This is good if you want to work with the latest version of the code from
+GitHub that we may not have packaged into an official release.
